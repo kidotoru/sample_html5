@@ -39,7 +39,6 @@ and open the template in the editor.
 			var col = new Array("olive", "yellowgreen", "olivedrab", "darkolivegreen", "greenyellow", "limegreen", "green", "lime");
 			//var col = new Array("red", "blue", "yellow", "green", "white", "black", "magenta", "cyan");
 
-
 			$(document).ready(function () {
 				loop();
 			});
@@ -47,6 +46,11 @@ and open the template in the editor.
 			function loop() {
 				/* Canvas要素の定義など */
 				var cs = document.getElementById('loop');
+				var style = window.getComputedStyle(cs);
+				//pxを削除する
+				cs.width = +style.width.replace(/px/, "");
+				cs.height = +style.height.replace(/px/, "");
+
 				var ctx = cs.getContext('2d');
 				var w = cs.width;
 				var h = cs.height;
@@ -65,37 +69,34 @@ and open the template in the editor.
 
 					ctx.fillStyle = col[rnd]; //塗りつぶしの色は赤
 
-
 					// ctx.strokeRect(x, 5, 10, 10);  //四角形を描く
 					//ctx.arc(x, y, 1, 0, Math.PI * 2, false);
 					//ctx.fill(); // stroke()の代わりにfill()を使用
-					ctx.fillRect(x, y, 3, 3);  //四角形を描く
-
-
+					ctx.fillRect(x, y, 30, 30);  //四角形を描く
 
 					// 四角形のx座標がCanvasの横幅を超えたら初期位置(x座標を0)へ
 					// そうでなければ、x座標を1増やす
 					if (x > cs.width) {
 						x = 0;
-					y += 3;
-							
-			if (y > cs.height) {
+						y += 30;
+
+						if (y > cs.height) {
 							y = 0;
 							//ctx.clearRect(0, 0, w, h); // Canvas全体をクリア
 							//setInterval(render, 1);
 						} else {
-			//				y += 3;
+							//				y += 3;
 						}
 					} else {
-						x += 3;
+						x += 30;
 					}
 
 					// 繰り返し処理に下記どちらかを使った場合、※1を有効化（もしくは即時実行）
-					 //setTimeout(render, 0);
+					//setTimeout(render, 0);
 					// requestAnimationFrame(render);
 				}
 				/* ※1 */
-				 //render();
+				//render();
 
 				/* 100ミリ秒ごとに、描画フローを繰り返す */
 				/* setTimeout、requestAnimationFrameではなく、setIntervalを使う場合 */
@@ -104,9 +105,5 @@ and open the template in the editor.
 			loop();
 
 		</script>
-
-
-
-
 	</body>
 </html>
