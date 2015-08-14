@@ -3,7 +3,7 @@
 	<head>
 		<title>Page05</title>
 		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="viewport" content="width=device-width">
 		<style type="text/css">
 			* {
 				margin: 0 auto;
@@ -13,38 +13,99 @@
 			body {
 				width: 100%;
 				height: 100%;
+				background-color:  black;
+				color: white;
 			}		
 		</style>
 
 
 	</head>
 	<body>
-		<canvas id="loop" style="background-color: black;width:  1024px;height: 512px;"></canvas>
+		<canvas id="loop" width="1024" height="512" style="background-color: black;width:  100%;"></canvas>
+
+		<p id="pos"></p>
+		<canvas id="detail" width="1024" height="1024" style="background-color: black;width:  100%;"></canvas>
 
 		<script type="text/javascript" src="./js/libs/jquery/jquery.js"></script>
 		<script>
+			var gLeft;
+			var gRight;
 
 			$(document).ready(function () {
+
+				$('#loop').mousedown(function (e) {
+					var cx = e.offsetX;
+					var cy = e.offsetY;
+					var w = $('#loop').width();
+					var h = $('#loop').height();
+					var x = Math.floor(cx * 1024 / w);
+					var y = Math.floor(cy * 512 / h);
+					$('#pos').text('x=' + x + ',y=' + y);
+					var tmpSize = 1024;
+					var cs = document.getElementById('detail');
+					var ctx = cs.getContext('2d');
+					/* パスを初期化 */
+					ctx.beginPath();
+
+					var t = new Terrein(tmpSize, tmpSize);
+
+					var pmap;
+
+					if (x < 512) {
+
+						pmap = gLeft.array;
+
+					} else {
+						pmap = gRight.array;
+						x -= 512;
+
+					}
+
+					for (i1 = 0, i2 = x; i1 < t.array.length; i1++) {
+						if (i1 % 16 === 0) {
+							i2++;
+						}
+
+						for (j1 = 0, j2 = y; j1 < t.array[i1].length; j1++) {
+
+							if (j1 % 16 === 0) {
+								j2++;
+							}
+							t.array[i1][j1] = pmap[i2][j2];
+
+						}
+
+
+					}
+					// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
+					var mm = 64;
+					t.init(pmap[x][y], pmap[x + mm][y], pmap[x][y + mm], pmap[x + mm][y + mm]);
+					t.render(ctx, 0);
+
+
+				});
+
+//initial-scale=1.0
 
 // the initial seed
 //Math.seed = 6;
 				Math.seed = +new Date();
 				var tmpSize = 512;
-							var cs = document.getElementById('loop');
-							var style = window.getComputedStyle(cs);
-							//pxを削除する
-							cs.width = style.width.replace(/px/, "");
-							cs.height = style.height.replace(/px/, "");
-							var ctx = cs.getContext('2d');
-							/* パスを初期化 */
-							ctx.beginPath();
+				var cs = document.getElementById('loop');
+				//var style = window.getComputedStyle(cs);
+				//pxを削除する
+				//cs.width = style.width.replace(/px/, "");
+				//cs.height = style.height.replace(/px/, "");
+				var ctx = cs.getContext('2d');
+				/* パスを初期化 */
+				ctx.beginPath();
 
-		var t = new Terrein(tmpSize, tmpSize);
-				t.init();
-				t.render(ctx,0);
-var t2 = new Terrein(tmpSize, tmpSize);
-				t2.init();
-				t2.render(ctx,512);
+				gLeft = new Terrein(tmpSize, tmpSize);
+				gLeft.init(0, 0, 0, 0);
+				gLeft.render(ctx, 0);
+				gRight = new Terrein(tmpSize, tmpSize);
+				gRight.init(0, 0, 0, 0);
+				gRight.render(ctx, 512);
 
 			});
 			function Terrein(width, height) {
@@ -65,22 +126,22 @@ var t2 = new Terrein(tmpSize, tmpSize);
 			;
 			Terrein.prototype =
 					{
-						init: function () {
-
-							var iv1 = Math.random() * 100;
-							var iv2 = Math.random() * 100;
-							var iv3 = Math.random() * 100;
-							var iv4 = Math.random() * 100;
-
-							iv1 = 0;
-							iv2 = 0;
-							iv3 = 0;
-							iv4 = 0;
-
+						init: function (iv1, iv2, iv3, iv4) {
+							/*
+							 var iv1 = Math.random() * 100;
+							 var iv2 = Math.random() * 100;
+							 var iv3 = Math.random() * 100;
+							 var iv4 = Math.random() * 100;
+							 
+							 iv1 = this.array[0][0];
+							 iv2 = this.array[this.array.length-1][0];
+							 iv3 = this.array[0][this.array.length-1];
+							 iv4 = this.array[this.array.length-1][this.array.length-1];
+							 */
 
 							this.generateHeightmap(0, 0, this.array.length, iv1, iv2, iv3, iv4);
 						},
-						render: function (ctx ,x,y) {
+						render: function (ctx, x, y) {
 							for (i = 0; i < this.array.length; i++) {
 								var tmp = this.array[i];
 								for (j = 0; j < tmp.length; j++) {
@@ -156,14 +217,14 @@ var t2 = new Terrein(tmpSize, tmpSize);
 
 
 									} else if (160 <= this.array[i][j] && this.array[i][j] < 255) {
-										
-										// 184	134	11
+
+										// 184	134 11
 										startR = 228;
 										startG = 204;
 										startB = 116;
-										endR = 184;
-										endG = 134;
-										endB = 11;
+										endR = 30;
+										endG = 30;
+										endB = 30;
 										startH = 160;
 										endH = 254;
 										incR = (endR - startR) / (endH - startH);
@@ -187,26 +248,26 @@ var t2 = new Terrein(tmpSize, tmpSize);
 
 									}
 
-										r = Math.floor(incR * (this.array[i][j] - startH) + startR);
-										g = Math.floor(incG * (this.array[i][j] - startH) + startG);
-										b = Math.floor(incB * (this.array[i][j] - startH) + startB);
+									r = Math.floor(incR * (this.array[i][j] - startH) + startR);
+									g = Math.floor(incG * (this.array[i][j] - startH) + startG);
+									b = Math.floor(incB * (this.array[i][j] - startH) + startB);
 
 									ctx.fillStyle = "rgba(" + r + "," + g + "," + b + ",1.0)";
 									ctx.fillRect(i + x, j, 1, 1); //四角形を描く
 								}
 							}
-ctx.beginPath();
+							ctx.beginPath();
 							ctx.strokeStyle = "rgba(200,200,200,0.5)";
 							for (i = 0; i <= this.array.length; i += 64)
 							{
 								ctx.moveTo(i + x, 0);
-								ctx.lineTo(i + x, 512);
+								ctx.lineTo(i + x, 1024);
 							}
 
 							for (i = 0; i <= this.array.length; i += 64)
 							{
 								ctx.moveTo(0 + x, i);
-								ctx.lineTo(512 + x, i);
+								ctx.lineTo(1024 + x, i);
 							}
 
 
@@ -217,16 +278,24 @@ ctx.beginPath();
 						// size = 現在のサイズ(幅, 高さ)
 						// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
 						generateHeightmap: function (x, y, size, tl, tr, bl, br) {
+							//$('#progress').text('x=' + x +',y=' +  y);
 							// minSize未満のサイズになったら分割を終了させる
 							if (size < 2) {
-
 								// 平均値を出す
-								this.array[x][y] = (tl + tr + bl + br) / 4;
+								//	this.array[x][y] = (tl + tr + bl + br) / 4;
+
+								if (this.array[x][y] === 0 ) {
+									this.array[x][y] = (tl + tr + bl + br) / 4;
+								}
 							} else {
 								// 四隅から見て中央にあるピクセルに平均値 + 変位させるランダムな値を入れる
-								//var midPoint = (tl + tr + bl + br) / 4 + (Math.random() * 512 - 256) * (size / 512);
-								//window.alert(xors.rand());
-								var midPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(512) - 256) * (size / 512);
+								var midPoint = this.array[x + size / 2][y + size / 2];
+
+								if (midPoint === 0) {
+								midPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(512) - 256) * (size / 512);
+								}
+
+								//var midPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(512) - 256) * (size / 512);
 
 
 								if (midPoint < 0)
