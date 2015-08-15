@@ -16,107 +16,178 @@
 				background-color:  black;
 				color: white;
 			}		
+			
+.button {
+	display: inline-block;
+	width: 120px;
+	height: 54px;
+	text-align: center;
+	text-decoration: none;
+	line-height: 54px;
+	outline: none;
+}
+.button::before,
+.button::after {
+	position: absolute;
+	z-index: -1;
+	display: block;
+	content: '';
+}
+.button,
+.button::before,
+.button::after {
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+	-webkit-transition: all .3s;
+	transition: all .3s;
+}			
+
+			.button {
+				border: 1px solid #15aeec;
+				background-color: #49c0f0;
+				background-image: -webkit-linear-gradient(top, #49c0f0, #2cafe3);
+				background-image: linear-gradient(to bottom, #49c0f0, #2cafe3);
+				//border-radius: 4px;
+				color: #fff;
+				line-height: 50px;
+				-webkit-transition: none;
+				transition: none;
+				text-shadow: 0 1px 1px rgba(0, 0, 0, .3);
+			}
+			.button:hover {
+				border:1px solid #1090c3;
+				background-color: #1ab0ec;
+				background-image: -webkit-linear-gradient(top, #1ab0ec, #1a92c2);
+				background-image: linear-gradient(to bottom, #1ab0ec, #1a92c2);
+			}
+			.button:active {
+				background: #1a92c2;
+				box-shadow: inset 0 3px 5px rgba(0, 0, 0, .2);
+				color: #1679a1;
+				text-shadow: 0 1px 1px rgba(255, 255, 255, .5);
+			}			
+			a {
+				text-decoration: none;
+			}
 		</style>
 
 
 	</head>
 	<body>
+		<p>
+			<a id="create" class="button" href="#"> Create</a>
+			<a id="interval" class="button" href="#">Interval</a>
+			<a id="interval_stop" class="button" href="#">Interval Stop</a>
+			<span id="progress">wait...</span>
+		</p>
 		<canvas id="loop" width="1024" height="512" style="background-color: black;width:  100%;"></canvas>
 
-		<p id="pos"></p>
 		<canvas id="detail" width="512" height="512" style="background-color: black;width:  100%;"></canvas>
 
 		<script type="text/javascript" src="./js/libs/jquery/jquery.js"></script>
 		<script>
 			var gWorld;
+			var tmpSize = 512;
 
 			$(document).ready(function () {
+				$('#interval_stop').hide();
 
-				$('#loop').mousedown(function (e) {
+				gWorld = new Terrein(tmpSize * 2, tmpSize);
+				$('#create').mousedown(function (e) {
+					$('#progress').text('wait.');
+
+					create();
+				});
+				$('#interval').mousedown(function (e) {
+					$('#interval_stop').show();
+					$('#interval').hide();
+create();
+					intervalP = setInterval(create, 5000);
+				});
+				$('#interval_stop').mousedown(function (e) {
+					$('#interval').show();
+					$('#interval_stop').hide();
+
+					clearInterval(intervalP);
+				});
+
+				$('#loop').mousemove(function (e) {
 					var cx = e.offsetX;
 					var cy = e.offsetY;
 					var w = $('#loop').width();
 					var h = $('#loop').height();
-					var x = Math.floor(cx * 1024 / w);
+					var x = Math.floor(cx * 512 * 2 / w);
 					var y = Math.floor(cy * 512 / h);
-					
-					x -= 512 /4 /2;
-					y -= 512 /4 /2;
-					
-					$('#pos').text('x=' + x + ',y=' + y);
-					var tmpSize = 512;
-					var cs = document.getElementById('detail');
-					var ctx = cs.getContext('2d');
-					/* パスを初期化 */
-					ctx.beginPath();
 
-					var t = new Terrein(tmpSize, tmpSize);
 
-					var pmap;
+					$('#progress').text('x=' + x + ',y=' + y + ',h=' + gWorld.array[x][y]);
+
+				});
+
+				$('#loop').mousedown(function (e) {
+					$('#progress').text('wait.');
+
+					setTimeout(function () {
+
+						var cx = e.offsetX;
+						var cy = e.offsetY;
+						var w = $('#loop').width();
+						var h = $('#loop').height();
+						var x = Math.floor(cx * 512 * 2 / w);
+						var y = Math.floor(cy * 512 / h);
+
+						x -= 512 / 4 / 2;
+						y -= 512 / 4 / 2;
+
+						// 画面端の場合の処理
+						x < 0 ? x = 0 : x;
+						y < 0 ? y = 0 : y;
+						x + 128 > 512 * 2 ? x = 512 * 2 - 128 - 1 : x;
+						y + 128 > 512 ? y = 512 - 128 - 1 : y;
+
+						$('#progress').text('x=' + x + ',y=' + y);
+						var tmpSize = 512;
+						var cs = document.getElementById('detail');
+						var ctx = cs.getContext('2d');
+						/* パスを初期化 */
+						ctx.beginPath();
+
+						var t = new Terrein(tmpSize, tmpSize);
+
+						var pmap;
 						pmap = gWorld.array;
 
-					/*
-
-					if (x < 512) {
-
-						pmap = gWorld.array;
-
-					} else {
-						pmap = gRight.array;
-						x -= 512;
-
-					}
-					for (i1 = 0, i2 = x; i1 < t.array.length; i1++) {
-						if (i1 % 4 === 0) {
-							i2++;
-						}
-						for (j1 = 0, j2 = y; j1 < t.array[i1].length; j1++) {
-
-							if (j1 % 4 === 0) {
-								j2++;
+						t.iniSize = 512;
+						for (i1 = 0, i2 = x; i1 < t.array.length; i1 += 4, i2++) {
+							for (j1 = 0, j2 = y; j1 < t.array.length; j1 += 4, j2++) {
+								// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
+								t.init(pmap[i2][j2], pmap[i2 + 1][j2], pmap[i2][j2 + 1], pmap[i2 + 1][j2 + 1], i1, j1, 4);
 							}
-							t.array[i1][j1] = pmap[i2][j2];
 						}
-					}
-					 for (i1 = 0, i2 = x; i1 < t.array.length; i1 +=4, i2++) {
-					 
-					 for (j1 = 0, j2 = y; j1 < t.array[i1].length; j1 +=4 ,j2++) {
-					 t.array[i1][j1] = pmap[i2][j2];
-					 }
-					 }
-					 */
-					
-					t.iniSize = 512;
-					var mm = 128;
-					for ( i1 = 0,i2 = x; i1 < t.array.length; i1 +=4,i2++){
-						for ( j1 = 0,j2 = y; j1 < t.array.length; j1 +=4,j2++){
-					// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
-							t.init(pmap[i2][j2], pmap[i2 + 1][j2], pmap[i2][j2 + 1], pmap[i2 + 1][j2 + 1],i1,j1,4);
-						}
-					}
-						
-					
-					// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
-					//t.init(pmap[x][y], pmap[x + mm][y], pmap[x][y + mm], pmap[x + mm][y + mm],0,0,4);
-					t.render(ctx, 0);
-
-				var cs2 = document.getElementById('loop');
-				var ctx2 = cs2.getContext('2d');
-				/* パスを初期化 */
-				ctx2.beginPath();
-				gWorld.render(ctx2, 0);
-							ctx2.beginPath();
-
-							ctx2.globalCompositeOperation = "lighter";
-							ctx2.strokeStyle = "rgba(200,200,200,0.5)";
-							
-							ctx2.fillRect(x, y, 512 / 4, 512 / 4);
-							
-							ctx2.globalCompositeOperation = "source-over";
 
 
-							ctx2.stroke();
+						// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
+						//t.init(pmap[x][y], pmap[x + mm][y], pmap[x][y + mm], pmap[x + mm][y + mm],0,0,4);
+						t.render(ctx, 0);
 
+						var cs2 = document.getElementById('loop');
+						var ctx2 = cs2.getContext('2d');
+						/* パスを初期化 */
+						ctx2.beginPath();
+						gWorld.render(ctx2, 0);
+						ctx2.beginPath();
+
+						ctx2.globalCompositeOperation = "lighter";
+						ctx2.strokeStyle = "rgba(255,255,255,0.5)";
+
+						ctx2.fillRect(x, y, 512 / 4, 512 / 4);
+
+						ctx2.globalCompositeOperation = "source-over";
+
+						ctx2.stroke();
+
+					}, 0);
 
 
 				});
@@ -125,33 +196,46 @@
 
 // the initial seed
 //Math.seed = 6;
-				Math.seed = +new Date();
-				var tmpSize = 512;
-				var cs = document.getElementById('loop');
-				//var style = window.getComputedStyle(cs);
-				//pxを削除する
-				//cs.width = style.width.replace(/px/, "");
-				//cs.height = style.height.replace(/px/, "");
-				var ctx = cs.getContext('2d');
-				/* パスを初期化 */
-				ctx.beginPath();
+				create();
 
-				gWorld = new Terrein(tmpSize * 2, tmpSize);
-				// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値 , x ,y , size
-				gWorld.init(0, 0, 0, 0, 0, 0 , tmpSize);
-				
-				gWorld.init(0, 0, 0, 0, 512, 0 , tmpSize);
-				
-				
-				gWorld.render(ctx, 0);
-				//gRight = new Terrein(tmpSize, tmpSize);
-				//gRight.init(0, 0, 0, 0);
-				//gRight.render(ctx, 512);
 
 			});
+
+			function create() {
+				setTimeout(function () {
+
+					Math.seed = +new Date();
+					var cs = document.getElementById('loop');
+					//var style = window.getComputedStyle(cs);
+					//pxを削除する
+					//cs.width = style.width.replace(/px/, "");
+					//cs.height = style.height.replace(/px/, "");
+					var ctx = cs.getContext('2d');
+					/* パスを初期化 */
+					ctx.beginPath();
+
+					//gWorld = new Terrein(tmpSize * 2, tmpSize);
+					// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値 , x ,y , size
+					gWorld.init(0, 0, 0, 0, 0, 0, tmpSize);
+
+					gWorld.init(0, 0, 0, 0, 512, 0, tmpSize);
+
+
+					gWorld.render(ctx, 0);
+					//gRight = new Terrein(tmpSize, tmpSize);
+					//gRight.init(0, 0, 0, 0);
+					//gRight.render(ctx, 512);
+					$('#progress').text('done.');
+
+				}, 0);
+
+			}
+			;
+
+
 			function Terrein(width, height) {
 
-this.iniSize = 512;
+				this.iniSize = 512;
 
 				this.array = new Array();
 				for (i = 0; i < width; i++) {
@@ -168,22 +252,10 @@ this.iniSize = 512;
 			;
 			Terrein.prototype =
 					{
-						init: function (iv1, iv2, iv3, iv4,x,y,size) {
+						init: function (iv1, iv2, iv3, iv4, x, y, size) {
 							x = x || 0;
 							y = y || 0;
 							size = size || this.array.length;
-							/*
-							 var iv1 = Math.random() * 100;
-							 var iv2 = Math.random() * 100;
-							 var iv3 = Math.random() * 100;
-							 var iv4 = Math.random() * 100;
-							 
-							 iv1 = this.array[0][0];
-							 iv2 = this.array[this.array.length-1][0];
-							 iv3 = this.array[0][this.array.length-1];
-							 iv4 = this.array[this.array.length-1][this.array.length-1];
-							 */
-
 							this.generateHeightmap(x, y, size, iv1, iv2, iv3, iv4);
 						},
 						render: function (ctx, x, y) {
@@ -328,18 +400,24 @@ this.iniSize = 512;
 						// size = 現在のサイズ(幅, 高さ)
 						// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
 						generateHeightmap: function (x, y, size, tl, tr, bl, br) {
-							//$('#progress').text('x=' + x +',y=' +  y);
+							/*
+							 if ( x % 32 === 0){
+							 $('#progress').text('x=' + x +',y=' +  y);
+							 
+							 }					
+							 */
 							//
+
 
 							// minSize未満のサイズになったら分割を終了させる
 							if (size < 2) {
 								// 平均値を出す
 								this.array[x][y] = (tl + tr + bl + br) / 4;
-/*
-								if (this.array[x][y] === 0) {
-									this.array[x][y] = (tl + tr + bl + br) / 4;
-								}
-			*/
+								/*
+								 if (this.array[x][y] === 0) {
+								 this.array[x][y] = (tl + tr + bl + br) / 4;
+								 }
+								 */
 							} else {
 								/*
 								 
@@ -352,16 +430,16 @@ this.iniSize = 512;
 								 */
 
 								// 四隅から見て中央にあるピクセルに平均値 + 変位させるランダムな値を入れる
-/*
-			var midPoint = this.array[x + size / 2][y + size / 2];
-								var rndPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(8192) - 4096) * (size / 512);
-
-								if (midPoint !== 0) {
-									midPoint = midPoint;// * Math.seededRandom(1.2,0.8);
-								} else {
-									midPoint = rndPoint;
-								}
-			*/
+								/*
+								 var midPoint = this.array[x + size / 2][y + size / 2];
+								 var rndPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(8192) - 4096) * (size / 512);
+								 
+								 if (midPoint !== 0) {
+								 midPoint = midPoint;// * Math.seededRandom(1.2,0.8);
+								 } else {
+								 midPoint = rndPoint;
+								 }
+								 */
 								var midPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(8192) - 4096) * (size / this.iniSize);
 
 
@@ -401,7 +479,6 @@ this.iniSize = 512;
 								// 右下
 								this.generateHeightmap(x + size, y + size, size, midPoint, right, bottom, br);
 							}
-
 						}
 					};
 
