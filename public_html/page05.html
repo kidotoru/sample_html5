@@ -28,8 +28,7 @@
 
 		<script type="text/javascript" src="./js/libs/jquery/jquery.js"></script>
 		<script>
-			var gLeft;
-			var gRight;
+			var gWorld;
 
 			$(document).ready(function () {
 
@@ -40,6 +39,10 @@
 					var h = $('#loop').height();
 					var x = Math.floor(cx * 1024 / w);
 					var y = Math.floor(cy * 512 / h);
+					
+					x -= 512 /4 /2;
+					y -= 512 /4 /2;
+					
 					$('#pos').text('x=' + x + ',y=' + y);
 					var tmpSize = 512;
 					var cs = document.getElementById('detail');
@@ -50,17 +53,19 @@
 					var t = new Terrein(tmpSize, tmpSize);
 
 					var pmap;
+						pmap = gWorld.array;
+
+					/*
 
 					if (x < 512) {
 
-						pmap = gLeft.array;
+						pmap = gWorld.array;
 
 					} else {
 						pmap = gRight.array;
 						x -= 512;
 
 					}
-					/*
 					for (i1 = 0, i2 = x; i1 < t.array.length; i1++) {
 						if (i1 % 4 === 0) {
 							i2++;
@@ -95,6 +100,24 @@
 					//t.init(pmap[x][y], pmap[x + mm][y], pmap[x][y + mm], pmap[x + mm][y + mm],0,0,4);
 					t.render(ctx, 0);
 
+				var cs2 = document.getElementById('loop');
+				var ctx2 = cs2.getContext('2d');
+				/* パスを初期化 */
+				ctx2.beginPath();
+				gWorld.render(ctx2, 0);
+							ctx2.beginPath();
+
+							ctx2.globalCompositeOperation = "lighter";
+							ctx2.strokeStyle = "rgba(200,200,200,0.5)";
+							
+							ctx2.fillRect(x, y, 512 / 4, 512 / 4);
+							
+							ctx2.globalCompositeOperation = "source-over";
+
+
+							ctx2.stroke();
+
+
 
 				});
 
@@ -113,12 +136,17 @@
 				/* パスを初期化 */
 				ctx.beginPath();
 
-				gLeft = new Terrein(tmpSize, tmpSize);
-				gLeft.init(0, 0, 0, 0);
-				gLeft.render(ctx, 0);
-				gRight = new Terrein(tmpSize, tmpSize);
-				gRight.init(0, 0, 0, 0);
-				gRight.render(ctx, 512);
+				gWorld = new Terrein(tmpSize * 2, tmpSize);
+				// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値 , x ,y , size
+				gWorld.init(0, 0, 0, 0, 0, 0 , tmpSize);
+				
+				gWorld.init(0, 0, 0, 0, 512, 0 , tmpSize);
+				
+				
+				gWorld.render(ctx, 0);
+				//gRight = new Terrein(tmpSize, tmpSize);
+				//gRight.init(0, 0, 0, 0);
+				//gRight.render(ctx, 512);
 
 			});
 			function Terrein(width, height) {
