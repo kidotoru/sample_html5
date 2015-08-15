@@ -24,7 +24,7 @@
 		<canvas id="loop" width="1024" height="512" style="background-color: black;width:  100%;"></canvas>
 
 		<p id="pos"></p>
-		<canvas id="detail" width="1024" height="1024" style="background-color: black;width:  100%;"></canvas>
+		<canvas id="detail" width="512" height="512" style="background-color: black;width:  100%;"></canvas>
 
 		<script type="text/javascript" src="./js/libs/jquery/jquery.js"></script>
 		<script>
@@ -41,7 +41,7 @@
 					var x = Math.floor(cx * 1024 / w);
 					var y = Math.floor(cy * 512 / h);
 					$('#pos').text('x=' + x + ',y=' + y);
-					var tmpSize = 1024;
+					var tmpSize = 512;
 					var cs = document.getElementById('detail');
 					var ctx = cs.getContext('2d');
 					/* パスを初期化 */
@@ -60,26 +60,39 @@
 						x -= 512;
 
 					}
-
+					/*
 					for (i1 = 0, i2 = x; i1 < t.array.length; i1++) {
-						if (i1 % 16 === 0) {
+						if (i1 % 4 === 0) {
 							i2++;
 						}
-
 						for (j1 = 0, j2 = y; j1 < t.array[i1].length; j1++) {
 
-							if (j1 % 16 === 0) {
+							if (j1 % 4 === 0) {
 								j2++;
 							}
 							t.array[i1][j1] = pmap[i2][j2];
-
 						}
-
-
 					}
+					 for (i1 = 0, i2 = x; i1 < t.array.length; i1 +=4, i2++) {
+					 
+					 for (j1 = 0, j2 = y; j1 < t.array[i1].length; j1 +=4 ,j2++) {
+					 t.array[i1][j1] = pmap[i2][j2];
+					 }
+					 }
+					 */
+					
+					t.iniSize = 512;
+					var mm = 128;
+					for ( i1 = 0,i2 = x; i1 < t.array.length; i1 +=4,i2++){
+						for ( j1 = 0,j2 = y; j1 < t.array.length; j1 +=4,j2++){
 					// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
-					var mm = 64;
-					t.init(pmap[x][y], pmap[x + mm][y], pmap[x][y + mm], pmap[x + mm][y + mm]);
+							t.init(pmap[i2][j2], pmap[i2 + 1][j2], pmap[i2][j2 + 1], pmap[i2 + 1][j2 + 1],i1,j1,4);
+						}
+					}
+						
+					
+					// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
+					//t.init(pmap[x][y], pmap[x + mm][y], pmap[x][y + mm], pmap[x + mm][y + mm],0,0,4);
 					t.render(ctx, 0);
 
 
@@ -110,6 +123,7 @@
 			});
 			function Terrein(width, height) {
 
+this.iniSize = 512;
 
 				this.array = new Array();
 				for (i = 0; i < width; i++) {
@@ -126,7 +140,10 @@
 			;
 			Terrein.prototype =
 					{
-						init: function (iv1, iv2, iv3, iv4) {
+						init: function (iv1, iv2, iv3, iv4,x,y,size) {
+							x = x || 0;
+							y = y || 0;
+							size = size || this.array.length;
 							/*
 							 var iv1 = Math.random() * 100;
 							 var iv2 = Math.random() * 100;
@@ -139,7 +156,7 @@
 							 iv4 = this.array[this.array.length-1][this.array.length-1];
 							 */
 
-							this.generateHeightmap(0, 0, this.array.length, iv1, iv2, iv3, iv4);
+							this.generateHeightmap(x, y, size, iv1, iv2, iv3, iv4);
 						},
 						render: function (ctx, x, y) {
 							for (i = 0; i < this.array.length; i++) {
@@ -166,9 +183,10 @@
 									var incG = 0; //(endG - startG) / (endH - startH);
 									var incB = 0; //(endB - startB) / (endH - startH);
 
+									var nowP = this.array[i][j];// / 16;
 
 
-									if (this.array[i][j] < 20) {
+									if (nowP < 20 * 16) {
 
 
 										startR = 0;
@@ -177,15 +195,15 @@
 										endR = 0;
 										endG = 0;
 										endB = 205;
-										startH = 0;
-										endH = 19;
+										startH = 0 * 16;
+										endH = 19 * 16;
 										incR = (endR - startR) / (endH - startH);
 										incG = (endG - startG) / (endH - startH);
 										incB = (endB - startB) / (endH - startH);
 
 
 
-									} else if (20 <= this.array[i][j] && this.array[i][j] < 30) {
+									} else if (20 * 16 <= nowP && nowP < 30 * 16) {
 // 30	144	255
 // 100	149	237
 										startR = 0;
@@ -194,29 +212,29 @@
 										endR = 65;
 										endG = 105;
 										endB = 237;
-										startH = 20;
-										endH = 29;
+										startH = 20 * 16;
+										endH = 29 * 16;
 										incR = (endR - startR) / (endH - startH);
 										incG = (endG - startG) / (endH - startH);
 										incB = (endB - startB) / (endH - startH);
 
 
 										/////////////////////// ここまで海 /////////
-									} else if (30 <= this.array[i][j] && this.array[i][j] < 160) {
+									} else if (30 * 16 <= nowP && nowP < 160 * 16) {
 										startR = 0;
 										startG = 101;
 										startB = 68;
 										endR = 228;
 										endG = 204;
 										endB = 116;
-										startH = 30;
-										endH = 159;
+										startH = 30 * 16;
+										endH = 159 * 16;
 										incR = (endR - startR) / (endH - startH);
 										incG = (endG - startG) / (endH - startH);
 										incB = (endB - startB) / (endH - startH);
 
 
-									} else if (160 <= this.array[i][j] && this.array[i][j] < 255) {
+									} else if (160 * 16 <= nowP && nowP < 255 * 16) {
 
 										// 184	134 11
 										startR = 228;
@@ -225,8 +243,8 @@
 										endR = 30;
 										endG = 30;
 										endB = 30;
-										startH = 160;
-										endH = 254;
+										startH = 160 * 16;
+										endH = 254 * 16;
 										incR = (endR - startR) / (endH - startH);
 										incG = (endG - startG) / (endH - startH);
 										incB = (endB - startB) / (endH - startH);
@@ -239,8 +257,8 @@
 										endR = 255;
 										endG = 255;
 										endB = 255;
-										startH = 255;
-										endH = 255;
+										startH = 255 * 16;
+										endH = 255 * 16;
 										incR = (endR - startR) / (endH - startH);
 										incG = (endG - startG) / (endH - startH);
 										incB = (endB - startB) / (endH - startH);
@@ -248,15 +266,19 @@
 
 									}
 
-									r = Math.floor(incR * (this.array[i][j] - startH) + startR);
-									g = Math.floor(incG * (this.array[i][j] - startH) + startG);
-									b = Math.floor(incB * (this.array[i][j] - startH) + startB);
+									r = Math.floor(incR * (nowP - startH) + startR);
+									g = Math.floor(incG * (nowP - startH) + startG);
+									b = Math.floor(incB * (nowP - startH) + startB);
 
 									ctx.fillStyle = "rgba(" + r + "," + g + "," + b + ",1.0)";
 									ctx.fillRect(i + x, j, 1, 1); //四角形を描く
 								}
 							}
+
+
 							ctx.beginPath();
+
+							ctx.globalCompositeOperation = "lighter";
 							ctx.strokeStyle = "rgba(200,200,200,0.5)";
 							for (i = 0; i <= this.array.length; i += 64)
 							{
@@ -269,7 +291,7 @@
 								ctx.moveTo(0 + x, i);
 								ctx.lineTo(1024 + x, i);
 							}
-
+							ctx.globalCompositeOperation = "source-over";
 
 
 							ctx.stroke();
@@ -279,29 +301,46 @@
 						// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
 						generateHeightmap: function (x, y, size, tl, tr, bl, br) {
 							//$('#progress').text('x=' + x +',y=' +  y);
+							//
+
 							// minSize未満のサイズになったら分割を終了させる
 							if (size < 2) {
 								// 平均値を出す
-								//	this.array[x][y] = (tl + tr + bl + br) / 4;
-
-								if (this.array[x][y] === 0 ) {
+								this.array[x][y] = (tl + tr + bl + br) / 4;
+/*
+								if (this.array[x][y] === 0) {
 									this.array[x][y] = (tl + tr + bl + br) / 4;
 								}
+			*/
 							} else {
+								/*
+								 
+								 if ( this.array[x][y] !== 0 && this.array[x + size - 1 ][y] !== 0) {
+								 tl =  this.array[x][y];
+								 tr =  this.array[x + size - 1 ][y];
+								 bl =  this.array[x][y + size - 1 ];
+								 br =  this.array[x + size - 1][y + size - 1];
+								 }
+								 */
+
 								// 四隅から見て中央にあるピクセルに平均値 + 変位させるランダムな値を入れる
-								var midPoint = this.array[x + size / 2][y + size / 2];
+/*
+			var midPoint = this.array[x + size / 2][y + size / 2];
+								var rndPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(8192) - 4096) * (size / 512);
 
-								if (midPoint === 0) {
-								midPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(512) - 256) * (size / 512);
+								if (midPoint !== 0) {
+									midPoint = midPoint;// * Math.seededRandom(1.2,0.8);
+								} else {
+									midPoint = rndPoint;
 								}
-
-								//var midPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(512) - 256) * (size / 512);
+			*/
+								var midPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(8192) - 4096) * (size / this.iniSize);
 
 
 								if (midPoint < 0)
 									midPoint = 0;
-								if (midPoint > 256)
-									midPoint = 256;
+								if (midPoint > 4096)
+									midPoint = 4096;
 
 
 								// 中央から見て上下左右にあるピクセルにも平均値を入れる
@@ -309,7 +348,20 @@
 								var bottom = (bl + br) / 2; // 下 = 左下と右下の平均値
 								var left = (tl + bl) / 2; // 左 = 左上と左下の平均値
 								var right = (tr + br) / 2; // 右 = 右上と右下の平均値
-
+								/*
+								 if ( this.array[x + size / 2 - 1][y] !== 0 )        {
+								 top = this.array[x + size / 2][y];
+								 }
+								 if ( this.array[x + size / 2 -1][y + size-1] !== 0 ) {
+								 bottom = this.array[x + size / 2-1][y + size -1];
+								 }
+								 if ( this.array[x][y + size / 2 -1] !== 0 )  {
+								 left = this.array[x][y + size / 2 -1];
+								 }
+								 if ( this.array[x + size - 1][y + size / 2 -1] !== 0 ) {
+								 right = this.array[x + size -1][y +  size / 2 -1];
+								 }
+								 */
 								// 2*2に分割するのでサイズ(幅, 高さ)を半分にする
 								size /= 2;
 								// 左上
