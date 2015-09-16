@@ -16,39 +16,38 @@
 				background-color:  black;
 				color: white;
 			}		
-			
-.button {
-	display: inline-block;
-	width: 120px;
-	height: 54px;
-	text-align: center;
-	text-decoration: none;
-	line-height: 54px;
-	outline: none;
-}
-.button::before,
-.button::after {
-	position: absolute;
-	z-index: -1;
-	display: block;
-	content: '';
-}
-.button,
-.button::before,
-.button::after {
-	-webkit-box-sizing: border-box;
-	-moz-box-sizing: border-box;
-	box-sizing: border-box;
-	-webkit-transition: all .3s;
-	transition: all .3s;
-}			
+
+			.button {
+				display: inline-block;
+				width: 120px;
+				height: 48px;
+				text-align: center;
+				text-decoration: none;
+				line-height: 54px;
+				outline: none;
+			}
+			.button::before,
+			.button::after {
+				position: absolute;
+				z-index: -1;
+				display: block;
+				content: '';
+			}
+			.button,
+			.button::before,
+			.button::after {
+				-webkit-box-sizing: border-box;
+				-moz-box-sizing: border-box;
+				box-sizing: border-box;
+				-webkit-transition: all .3s;
+				transition: all .3s;
+			}			
 
 			.button {
 				border: 1px solid #15aeec;
 				background-color: #49c0f0;
 				background-image: -webkit-linear-gradient(top, #49c0f0, #2cafe3);
 				background-image: linear-gradient(to bottom, #49c0f0, #2cafe3);
-				//border-radius: 4px;
 				color: #fff;
 				line-height: 50px;
 				-webkit-transition: none;
@@ -76,25 +75,42 @@
 	</head>
 	<body>
 		<p>
-			<a id="create" class="button" href="#"> Create</a>
-			<a id="interval" class="button" href="#">Interval</a>
-			<a id="interval_stop" class="button" href="#">Interval Stop</a>
-<select id="base_size" name="base_size">
-<option value="128">小(128)</option>
-<option value="256" selected="selected">中(256)</option>
-<option value="512">大(512)</option>
-</select>
+			<a id="create" class="button" >Create</a>
+			<a id="3dview" class="button" >3D View</a>
 		</p>
-		<canvas id="loop" width="512" height="256" style="background-color: black;width:  100%;"></canvas>
+		<canvas id="loop" width="1024" height="512" style="background-color: black;width:  100%;"></canvas>
 		<p>			
 			<span id="progress">wait...</span>
 		</p>
-		<canvas id="detail" width="256" height="256" style="background-color: black;width:  100%;"></canvas>
+		<canvas id="detail" width="512" height="512" style="background-color: black;width:  100%;"></canvas>
+
+
+		<a id="interval" class="button" href="#">Interval</a>
+		<a id="interval_stop" class="button" href="#">Interval Stop</a>
+		<select id="base_size" name="base_size">
+			<option value="128" >小(128)</option>
+			<option value="256">中(256)</option>
+			<option value="512" selected="selected">大(512)</option>
+		</select>
+
 
 		<script type="text/javascript" src="./js/libs/jquery/jquery.js"></script>
+		<script type="text/javascript" src="./js/libs/threejs/three2.min.js"></script>
+
+		<script type="text/javascript" src="./js/libs/threejs/perlin-noise-simplex.js"></script>
+
 		<script>
+
+			var WIDTH = window.innerWidth, HEIGHT = window.innerHeight;
+			var renderer, scene, camera, light;
+			var ground;
+
+
 			var gWorld;
-			var tmpSize = 256;
+			var gDetail;
+			var tmpSize = 512;
+			var detailX = 0;
+			var detailY = 0;
 
 			$(document).ready(function () {
 				$('#interval_stop').hide();
@@ -103,26 +119,33 @@
 
 				gWorld = new Terrein(tmpSize * 2, tmpSize);
 
-		
-$('#base_size').change(function() {
-    var val = Number($('#base_size').val());
-    console.log(val); 
-	tmpSize = val;
-	$("#loop").attr({"width":val * 2,"height":val});
-	$("#detail").attr({"width":val,"height":val});
-	gWorld = new Terrein(tmpSize * 2, tmpSize);
-	create();
-});		
-		
-		$('#create').mousedown(function (e) {
+
+				$('#base_size').change(function () {
+					var val = Number($('#base_size').val());
+					console.log(val);
+					tmpSize = val;
+					$("#loop").attr({"width": val * 2, "height": val});
+					$("#detail").attr({"width": val, "height": val});
+					gWorld = new Terrein(tmpSize * 2, tmpSize);
+					create();
+				});
+
+				$('#create').mousedown(function (e) {
 					$('#progress').text('wait.');
 
 					create();
 				});
+
+				$('#3dview').mousedown(function (e) {
+					initScene();
+					createGround();
+					animate();
+				});
+
 				$('#interval').mousedown(function (e) {
 					$('#interval_stop').show();
 					$('#interval').hide();
-create();
+					create();
 					intervalP = setInterval(create, 5000);
 				});
 				$('#interval_stop').mousedown(function (e) {
@@ -139,10 +162,7 @@ create();
 					var h = $('#loop').height();
 					var x = Math.floor(cx * tmpSize * 2 / w);
 					var y = Math.floor(cy * tmpSize / h);
-
-
 					$('#progress').text('x=' + x + ',y=' + y + ',h=' + gWorld.array[x][y]);
-
 				});
 
 				$('#loop').mousedown(function (e) {
@@ -174,15 +194,18 @@ create();
 						ctx.beginPath();
 
 						var t = new Terrein(tmpSize, tmpSize);
-
+						gDetail = t;
 						var pmap;
 						pmap = gWorld.array;
 
-						t.iniSize = tmpSize;
-						for (i1 = 0, i2 = x; i1 < t.array.length; i1 += 4, i2++) {
-							for (j1 = 0, j2 = y; j1 < t.array.length; j1 += 4, j2++) {
+						detailX = x;
+						detailY = y;
+
+						t.iniSize = tmpSize;// * 2;
+						for (var i1 = 0, i2 = x; i1 < t.array.length; i1 += 4, i2++) {
+							for (var j1 = 0, j2 = y; j1 < t.array.length; j1 += 4, j2++) {
 								// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
-								t.init(pmap[i2][j2], pmap[i2 + 1][j2], pmap[i2][j2 + 1], pmap[i2 + 1][j2 + 1], i1, j1, 4);
+								t.init2(pmap[i2][j2], pmap[i2 + 1][j2], pmap[i2][j2 + 1], pmap[i2 + 1][j2 + 1], i1, j1, 4, i2, j2);
 							}
 						}
 
@@ -194,24 +217,161 @@ create();
 						var cs2 = document.getElementById('loop');
 						var ctx2 = cs2.getContext('2d');
 						/* パスを初期化 */
-						ctx2.beginPath();
+						//ctx2.beginPath();
 						gWorld.render(ctx2, 0);
-						ctx2.beginPath();
+						//ctx2.beginPath();
 
 						ctx2.globalCompositeOperation = "lighter";
-						ctx2.strokeStyle = "rgba(255,255,255,0.5)";
+						ctx2.fillStyle = "rgba(0,0,255,0.5)";
 
 						ctx2.fillRect(x, y, tmpSize / 4, tmpSize / 4);
 
 						ctx2.globalCompositeOperation = "source-over";
 
-						ctx2.stroke();
+						//ctx2.stroke();
 
 					}, 0);
 
 
 				});
 
+
+
+				/*
+				 * タップ、スワイプ、指を離した時のイベントハンドラ
+				 */
+				/*
+				 $("#detail").bind("touchstart", function (e) {
+				 
+				 var pos = Position(e); //X,Yを得る
+				 pos.offsetX = pos.x;
+				 pos.offsetY = pos.y;
+				 DetailMoveStart(pos);
+				 
+				 $('#progress').text('touchstart:x=' + pos.x + ',y=' + pos.y);
+				 });
+				 $("#detail").bind("touchmove", function (e) {
+				 var pos = Position(e); //X,Yを得る
+				 pos.offsetX = pos.x;
+				 pos.offsetY = pos.y;
+				 DetailMove(pos);
+				 
+				 $('#progress').text('touchmove:x=' + pos.x + ',y=' + pos.y);
+				 });
+				 $("#detail").bind("touchend", function (e) {
+				 
+				 DetailMoveEnd();
+				 });
+				 */
+				/*
+				 * 現在位置を得る
+				 */
+				function Position(e) {
+					var x = e.originalEvent.touches[0].pageX;
+					var y = e.originalEvent.touches[0].pageY;
+					x = Math.floor(x);
+					y = Math.floor(y);
+					var pos = {'x': x, 'y': y};
+					return pos;
+				}
+
+
+				$('#detail').mousedown(DetailMoveStart);
+				$('#detail').mousemove(DetailMove);
+				$('#detail').mouseup(DetailMoveEnd);
+				$('#detail').mouseout(DetailMoveEnd);
+
+
+				function DetailMoveStart(e) {
+					var cx = e.offsetX;
+					var cy = e.offsetY;
+					var w = $('#detail').width();
+					var h = $('#detail').height();
+					var x = Math.floor(cx * tmpSize / w);
+					var y = Math.floor(cy * tmpSize / h);
+
+					currentX = x;
+					currentY = y;
+					isDrag = true;
+
+				}
+
+
+
+
+				var isDrag = false;
+				var currentX = 0;
+				var currentY = 0;
+
+
+				function DetailMove(e) {
+
+					if (isDrag) {
+
+
+						//	detailX -= detailX % 4;
+//detailY -= detailY % 4;
+						var cx = e.offsetX;
+						var cy = e.offsetY;
+						var w = $('#detail').width();
+						var h = $('#detail').height();
+						var x = Math.floor(cx * tmpSize / w);
+						var y = Math.floor(cy * tmpSize / h);
+
+						detailX -= Math.floor((x - currentX));
+						detailY -= Math.floor((y - currentY));
+
+
+						var cs = document.getElementById('detail');
+						var ctx = cs.getContext('2d');
+						/* パスを初期化 */
+						ctx.beginPath();
+
+						var t = new Terrein(tmpSize, tmpSize);
+
+						var pmap;
+						pmap = gWorld.array;
+
+						t.iniSize = tmpSize * 2;
+						for (i1 = 0, i2 = detailX; i1 < t.array.length; i1 += 4, i2++) {
+							for (j1 = 0, j2 = detailY; j1 < t.array.length; j1 += 4, j2++) {
+								// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
+								t.init2(pmap[i2][j2], pmap[i2 + 1][j2], pmap[i2][j2 + 1], pmap[i2 + 1][j2 + 1], i1, j1, 4, i2, j2);
+							}
+						}
+
+
+						// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
+						//t.init(pmap[x][y], pmap[x + mm][y], pmap[x][y + mm], pmap[x + mm][y + mm],0,0,4);
+						t.render(ctx, 0);
+
+						var cs2 = document.getElementById('loop');
+						var ctx2 = cs2.getContext('2d');
+						/* パスを初期化 */
+						//ctx2.beginPath();
+						gWorld.render(ctx2, 0);
+						//ctx2.beginPath();
+
+						ctx2.globalCompositeOperation = "lighter";
+						ctx2.fillStyle = "rgba(0,0,255,0.5)";
+
+						ctx2.fillRect(detailX, detailY, tmpSize / 4, tmpSize / 4);
+
+						ctx2.globalCompositeOperation = "source-over";
+
+
+						currentX = x;
+						currentY = y;
+						$('#progress').text('x=' + detailX + ',y=' + detailY + 'h=');//+ gDetail[detailX][detailY]
+
+					}
+
+				}
+
+
+				function DetailMoveEnd() {
+					isDrag = false;
+				}
 //initial-scale=1.0
 
 // the initial seed
@@ -226,15 +386,8 @@ create();
 
 					Math.seed = +new Date();
 					var cs = document.getElementById('loop');
-					//var style = window.getComputedStyle(cs);
-					//pxを削除する
-					//cs.width = style.width.replace(/px/, "");
-					//cs.height = style.height.replace(/px/, "");
 					var ctx = cs.getContext('2d');
-					/* パスを初期化 */
-					ctx.beginPath();
 
-					//gWorld = new Terrein(tmpSize * 2, tmpSize);
 					// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値 , x ,y , size
 					gWorld.init(0, 0, 0, 0, 0, 0, tmpSize);
 
@@ -242,15 +395,24 @@ create();
 
 
 					gWorld.render(ctx, 0);
-					//gRight = new Terrein(tmpSize, tmpSize);
-					//gRight.init(0, 0, 0, 0);
-					//gRight.render(ctx, 512);
 					$('#progress').text('done.');
 
 				}, 0);
+			}
+			;
+
+			function calcY(x1, y1, x2, y2, x) {
+				// y = ax + b
+				var a = (y2 - y1) / (x2 - x1);
+				// b =  y - ax 
+				var b = y1 - a * x1;
+
+				return a * x + b;
+
 
 			}
 			;
+
 
 
 			function Terrein(width, height) {
@@ -258,11 +420,11 @@ create();
 				this.iniSize = tmpSize;
 
 				this.array = new Array();
-				for (i = 0; i < width; i++) {
+				for (var i = 0; i < width; i++) {
 
 					// １次元配列の各番地に、配列を作成して格納する
 					this.array[i] = new Array();
-					for (j = 0; j < height; j++) {
+					for (var j = 0; j < height; j++) {
 						// 0 で埋める
 						this.array[i][j] = 0;
 					}
@@ -276,16 +438,77 @@ create();
 							x = x || 0;
 							y = y || 0;
 							size = size || this.array.length;
+							//this.generateHeightmap(x, y, size, iv1, iv2, iv3, iv4);
 							this.generateHeightmap(x, y, size, iv1, iv2, iv3, iv4);
 						},
+						init2: function (iv1, iv2, iv3, iv4, x, y, size, orgX, orgY) {
+							x = x || 0;
+							y = y || 0;
+							size = size || this.array.length;
+							//this.generateHeightmap(x, y, size, iv1, iv2, iv3, iv4);
+							this.generateHeightmapPerlinNoise(x, y, size, iv1, iv2, iv3, iv4, orgX, orgY);
+						},
+						// x, y = 左上座標
+						// size = 現在のサイズ(幅, 高さ)
+						// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
+						generateHeightmap: function (x, y, size, tl, tr, bl, br) {
+							// minSize未満のサイズになったら分割を終了させる
+							if (size < 2) {
+								// 平均値を出す
+								this.array[x][y] = (tl + tr + bl + br) / 4;
+							} else {
+								var midPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(8192) - 4096) * (size / this.iniSize);
+
+
+								if (midPoint < 0)
+									midPoint = 0;
+								if (midPoint > 4096)
+									midPoint = 4096;
+
+
+								// 中央から見て上下左右にあるピクセルにも平均値を入れる
+								var top = (tl + tr) / 2; // 上 = 左上と右上の平均値
+								var bottom = (bl + br) / 2; // 下 = 左下と右下の平均値
+								var left = (tl + bl) / 2; // 左 = 左上と左下の平均値
+								var right = (tr + br) / 2; // 右 = 右上と右下の平均値
+								// 2*2に分割するのでサイズ(幅, 高さ)を半分にする
+								size /= 2;
+								// 左上
+								this.generateHeightmap(x, y, size, tl, top, left, midPoint);
+								// 右上
+								this.generateHeightmap(x + size, y, size, top, tr, midPoint, right);
+								// 左下
+								this.generateHeightmap(x, y + size, size, left, midPoint, bl, bottom);
+								// 右下
+								this.generateHeightmap(x + size, y + size, size, midPoint, right, bottom, br);
+							}
+						},
+						// x, y = 左上座標
+						// size = 現在のサイズ(幅, 高さ)
+						// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
+						generateHeightmapPerlinNoise: function (x, y, size, tl, tr, bl, br, orgX, orgY) {
+							var p = new Perlin();
+							for (var i = x; i < size + x; i++) {
+								var xv1 = calcY(x, tl, x + size - 1, tr, i);
+								var xv2 = calcY(x, bl, x + size - 1, br, i);
+								for (var j = y; j < size + y; j++) {
+									var yv = calcY(y, xv1, y + size - 1, xv2, j);
+
+									// 0.0 - 1.0 > -0.5 - +0.5
+									//var pv = p.perlin((orgX + i /4) / 512, (orgY + j /4) / 512, 0);
+									var pv = p.perlin(1 / (orgX + i * 4), 1 / (orgY + j * 4), 0);
+									//console.log(pv);
+									var h = yv + yv * (pv - 0.5);
+									this.array[i][j] = h;//p.perlin(i / size, j / size, 0) - 0.5;
+								}
+							}
+
+						},
 						render: function (ctx, x, y) {
-							for (i = 0; i < this.array.length; i++) {
+							var image = ctx.createImageData(this.array.length, this.array[0].length);
+							for (var i = 0; i < this.array.length; i++) {
 								var tmp = this.array[i];
-								for (j = 0; j < tmp.length; j++) {
-									//ctx.fillStyle = "rgb(" + Math.floor(this.array[i][j]) + "," + Math.floor(this.array[i][j]) + "," + Math.floor(this.array[i][j]) + ")";
-									//ctx.fillRect(i, j, 1, 1); //四角形を描く
-
-
+								for (var j = 0; j < tmp.length; j++) {
 
 									var r = 0;
 									var g = 0;
@@ -305,10 +528,7 @@ create();
 
 									var nowP = this.array[i][j];// / 16;
 
-
 									if (nowP < 20 * 16) {
-
-
 										startR = 0;
 										startG = 0;
 										startB = 139;
@@ -320,12 +540,7 @@ create();
 										incR = (endR - startR) / (endH - startH);
 										incG = (endG - startG) / (endH - startH);
 										incB = (endB - startB) / (endH - startH);
-
-
-
 									} else if (20 * 16 <= nowP && nowP < 30 * 16) {
-// 30	144	255
-// 100	149	237
 										startR = 0;
 										startG = 0;
 										startB = 205;
@@ -337,8 +552,6 @@ create();
 										incR = (endR - startR) / (endH - startH);
 										incG = (endG - startG) / (endH - startH);
 										incB = (endB - startB) / (endH - startH);
-
-
 										/////////////////////// ここまで海 /////////
 									} else if (30 * 16 <= nowP && nowP < 160 * 16) {
 										startR = 0;
@@ -352,11 +565,7 @@ create();
 										incR = (endR - startR) / (endH - startH);
 										incG = (endG - startG) / (endH - startH);
 										incB = (endB - startB) / (endH - startH);
-
-
 									} else if (160 * 16 <= nowP && nowP < 255 * 16) {
-
-										// 184	134 11
 										startR = 228;
 										startG = 204;
 										startB = 116;
@@ -368,8 +577,6 @@ create();
 										incR = (endR - startR) / (endH - startH);
 										incG = (endG - startG) / (endH - startH);
 										incB = (endB - startB) / (endH - startH);
-
-
 									} else {
 										startR = 184;
 										startG = 134;
@@ -382,125 +589,298 @@ create();
 										incR = (endR - startR) / (endH - startH);
 										incG = (endG - startG) / (endH - startH);
 										incB = (endB - startB) / (endH - startH);
-
-
 									}
 
 									r = Math.floor(incR * (nowP - startH) + startR);
 									g = Math.floor(incG * (nowP - startH) + startG);
 									b = Math.floor(incB * (nowP - startH) + startB);
-
-									ctx.fillStyle = "rgba(" + r + "," + g + "," + b + ",1.0)";
-									ctx.fillRect(i + x, j, 1, 1); //四角形を描く
+									image.data[(j * image.width + i) * 4 + 0] = r;
+									image.data[(j * image.width + i) * 4 + 1] = g;
+									image.data[(j * image.width + i) * 4 + 2] = b;
+									image.data[(j * image.width + i) * 4 + 3] = 255;
 								}
 							}
 
+							ctx.putImageData(image, 0, 0);
 
 							ctx.beginPath();
 
 							ctx.globalCompositeOperation = "lighter";
 							ctx.strokeStyle = "rgba(200,200,200,0.5)";
-							for (i = 0; i <= this.array.length; i += 512 /8)
+							for (var i = 0; i <= this.array.length; i += 512 / 8)
 							{
 								ctx.moveTo(i + x, 0);
 								ctx.lineTo(i + x, tmpSize * 2);
 							}
 
-							for (i = 0; i <= this.array.length; i += 512 / 8)
+							for (var i = 0; i <= this.array.length; i += 512 / 8)
 							{
 								ctx.moveTo(0 + x, i);
 								ctx.lineTo(tmpSize * 2 + x, i);
 							}
 							ctx.globalCompositeOperation = "source-over";
 
-
 							ctx.stroke();
 						},
-						// x, y = 左上座標
-						// size = 現在のサイズ(幅, 高さ)
-						// tl = 左上の値, tr = 右上の値, bl = 左下の値, br = 右下の値
-						generateHeightmap: function (x, y, size, tl, tr, bl, br) {
-							/*
-							 if ( x % 32 === 0){
-							 $('#progress').text('x=' + x +',y=' +  y);
-							 
-							 }					
-							 */
-							//
+					};
 
+			// http://postd.cc/understanding-perlin-noise/
+			function Perlin(repeat) {
+				this.repeat = repeat || -1;
+// Hash lookup table as defined by Ken Perlin.  This is a randomly
+// arranged array of all numbers from 0-255 inclusive.
+				this.permutation = [151, 160, 137, 91, 90, 15,
+					131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23,
+					190, 6, 148, 247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32, 57, 177, 33,
+					88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175, 74, 165, 71, 134, 139, 48, 27, 166,
+					77, 146, 158, 231, 83, 111, 229, 122, 60, 211, 133, 230, 220, 105, 92, 41, 55, 46, 245, 40, 244,
+					102, 143, 54, 65, 25, 63, 161, 1, 216, 80, 73, 209, 76, 132, 187, 208, 89, 18, 169, 200, 196,
+					135, 130, 116, 188, 159, 86, 164, 100, 109, 198, 173, 186, 3, 64, 52, 217, 226, 250, 124, 123,
+					5, 202, 38, 147, 118, 126, 255, 82, 85, 212, 207, 206, 59, 227, 47, 16, 58, 17, 182, 189, 28, 42,
+					223, 183, 170, 213, 119, 248, 152, 2, 44, 154, 163, 70, 221, 153, 101, 155, 167, 43, 172, 9,
+					129, 22, 39, 253, 19, 98, 108, 110, 79, 113, 224, 232, 178, 185, 112, 104, 218, 246, 97, 228,
+					251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81, 51, 145, 235, 249, 14, 239, 107,
+					49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254,
+					138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180
+				];
 
-							// minSize未満のサイズになったら分割を終了させる
-							if (size < 2) {
-								// 平均値を出す
-								this.array[x][y] = (tl + tr + bl + br) / 4;
-								/*
-								 if (this.array[x][y] === 0) {
-								 this.array[x][y] = (tl + tr + bl + br) / 4;
-								 }
-								 */
-							} else {
-								/*
-								 
-								 if ( this.array[x][y] !== 0 && this.array[x + size - 1 ][y] !== 0) {
-								 tl =  this.array[x][y];
-								 tr =  this.array[x + size - 1 ][y];
-								 bl =  this.array[x][y + size - 1 ];
-								 br =  this.array[x + size - 1][y + size - 1];
-								 }
-								 */
+				this.p = [];
+				for (var x = 0; x < 512; x++) {
+					this.p[x] = this.permutation[x % 256];
+				}
 
-								// 四隅から見て中央にあるピクセルに平均値 + 変位させるランダムな値を入れる
-								/*
-								 var midPoint = this.array[x + size / 2][y + size / 2];
-								 var rndPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(8192) - 4096) * (size / 512);
-								 
-								 if (midPoint !== 0) {
-								 midPoint = midPoint;// * Math.seededRandom(1.2,0.8);
-								 } else {
-								 midPoint = rndPoint;
-								 }
-								 */
-								var midPoint = (tl + tr + bl + br) / 4 + (Math.seededRandom(8192) - 4096) * (size / this.iniSize);
+			}
+			;
+			Perlin.prototype =
+					{
+						octavePerlin: function (x, y, z, octaves, persistence) {
+							var total = 0;
+							var frequency = 1;
+							var amplitude = 1;
+							var maxValue = 0;			// Used for normalizing result to 0.0 - 1.0
+							for (var i = 0; i < octaves; i++) {
+								total += perlin(x * frequency, y * frequency, z * frequency) * amplitude;
 
+								maxValue += amplitude;
 
-								if (midPoint < 0)
-									midPoint = 0;
-								if (midPoint > 4096)
-									midPoint = 4096;
-
-
-								// 中央から見て上下左右にあるピクセルにも平均値を入れる
-								var top = (tl + tr) / 2; // 上 = 左上と右上の平均値
-								var bottom = (bl + br) / 2; // 下 = 左下と右下の平均値
-								var left = (tl + bl) / 2; // 左 = 左上と左下の平均値
-								var right = (tr + br) / 2; // 右 = 右上と右下の平均値
-								/*
-								 if ( this.array[x + size / 2 - 1][y] !== 0 )        {
-								 top = this.array[x + size / 2][y];
-								 }
-								 if ( this.array[x + size / 2 -1][y + size-1] !== 0 ) {
-								 bottom = this.array[x + size / 2-1][y + size -1];
-								 }
-								 if ( this.array[x][y + size / 2 -1] !== 0 )  {
-								 left = this.array[x][y + size / 2 -1];
-								 }
-								 if ( this.array[x + size - 1][y + size / 2 -1] !== 0 ) {
-								 right = this.array[x + size -1][y +  size / 2 -1];
-								 }
-								 */
-								// 2*2に分割するのでサイズ(幅, 高さ)を半分にする
-								size /= 2;
-								// 左上
-								this.generateHeightmap(x, y, size, tl, top, left, midPoint);
-								// 右上
-								this.generateHeightmap(x + size, y, size, top, tr, midPoint, right);
-								// 左下
-								this.generateHeightmap(x, y + size, size, left, midPoint, bl, bottom);
-								// 右下
-								this.generateHeightmap(x + size, y + size, size, midPoint, right, bottom, br);
+								amplitude *= persistence;
+								frequency *= 2;
 							}
+
+							return total / maxValue;
+						},
+						perlin: function (x, y, z) {
+							if (this.repeat > 0) {									// If we have any repeat on, change the coordinates to their "local" repetitions
+								x = x % this.repeat;
+								y = y % this.repeat;
+								z = z % this.repeat;
+							}
+
+							var xi = Math.floor(x) & 255;								// Calculate the "unit cube" that the point asked will be located in
+							var yi = Math.floor(y) & 255;								// The left bound is ( |_x_|,|_y_|,|_z_| ) and the right bound is that
+							var zi = Math.floor(z) & 255;								// plus 1.  Next we calculate the location (from 0.0 to 1.0) in that cube.
+							var xf = x - Math.floor(x);								// We also fade the location to smooth the result.
+							var yf = y - Math.floor(y);
+							var zf = z - Math.floor(z);
+							var u = this.fade(xf);
+							var v = this.fade(yf);
+							var w = this.fade(zf);
+
+							var aaa, aba, aab, abb, baa, bba, bab, bbb;
+							aaa = this.p[this.p[this.p[    xi ] + yi ] + zi ];
+							aba = this.p[this.p[this.p[    xi ] + this.inc(yi)] + zi ];
+							aab = this.p[this.p[this.p[    xi ] + yi ] + this.inc(zi)];
+							abb = this.p[this.p[this.p[    xi ] + this.inc(yi)] + this.inc(zi)];
+							baa = this.p[this.p[this.p[this.inc(xi)] + yi ] + zi ];
+							bba = this.p[this.p[this.p[this.inc(xi)] + this.inc(yi)] + zi ];
+							bab = this.p[this.p[this.p[this.inc(xi)] + yi ] + this.inc(zi)];
+							bbb = this.p[this.p[this.p[this.inc(xi)] + this.inc(yi)] + this.inc(zi)];
+
+							var x1, x2, y1, y2;
+							x1 = this.lerp(this.grad(aaa, xf, yf, zf), // The gradient function calculates the dot product between a pseudorandom
+									this.grad(baa, xf - 1, yf, zf), // gradient vector and the vector from the input coordinate to the 8
+									u);										// surrounding points in its unit cube.
+							x2 = this.lerp(this.grad(aba, xf, yf - 1, zf), // This is all then lerped together as a sort of weighted average based on the faded (u,v,w)
+									this.grad(bba, xf - 1, yf - 1, zf), // values we made earlier.
+									u);
+							y1 = this.lerp(x1, x2, v);
+
+							x1 = this.lerp(this.grad(aab, xf, yf, zf - 1),
+									this.grad(bab, xf - 1, yf, zf - 1),
+									u);
+							x2 = this.lerp(this.grad(abb, xf, yf - 1, zf - 1),
+									this.grad(bbb, xf - 1, yf - 1, zf - 1),
+									u);
+							y2 = this.lerp(x1, x2, v);
+
+							return (this.lerp(y1, y2, w) + 1) / 2;						// For convenience we bound it to 0 - 1 (theoretical min/max before is -1 - 1)
+						},
+						inc: function (num) {
+							num++;
+							if (this.repeat > 0)
+								num %= this.repeat;
+
+							return num;
+						},
+						grad: function (hash, x, y, z) {
+							var h = hash & 15;									// Take the hashed value and take the first 4 bits of it (15 == 0b1111)
+							var u = h < 8 /* 0b1000 */ ? x : y;				// If the most significant bit (MSB) of the hash is 0 then set u = x.  Otherwise y.
+
+							var v;											// In Ken Perlin's original implementation this was another conditional operator (?:).  I
+							// expanded it for readability.
+
+							if (h < 4 /* 0b0100 */)								// If the first and second significant bits are 0 set v = y
+								v = y;
+							else if (h == 12 /* 0b1100 */ || h == 14 /* 0b1110*/)// If the first and second significant bits are 1 set v = x
+								v = x;
+							else 												// If the first and second significant bits are not equal (0/1, 1/0) set v = z
+								v = z;
+
+							return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v); // Use the last 2 bits to decide if u and v are positive or negative.  Then return their addition.
+						},
+						fade: function (t) {
+							// Fade function as defined by Ken Perlin.  This eases coordinate values
+							// so that they will "ease" towards integral values.  This ends up smoothing
+							// the final output.
+							return t * t * t * (t * (t * 6 - 15) + 10);			// 6t^5 - 15t^4 + 10t^3
+						},
+						lerp: function (a, b, x) {
+							return a + x * (b - a);
 						}
 					};
+
+
+////////////
+			function initScene() {
+				renderer = new THREE.WebGLRenderer();
+				renderer.setSize(WIDTH, HEIGHT);
+				renderer.setClearColorHex(0x1E90FF, 1);
+				document.body.appendChild(renderer.domElement);
+
+				scene = new THREE.Scene();
+				//scene.fog = new THREE.FogExp2( 0xAA9966, 0.015 );
+				scene.fog = new THREE.FogExp2(0x1E90FF, 0.00003);
+
+				camera = new THREE.PerspectiveCamera(60, WIDTH / HEIGHT, 1, 100000);
+				camera.position.set(0, 2000, 0);
+
+				light = new THREE.DirectionalLight(0xffffff, 1);
+				light.position.set(20, 40, -15);
+				light.target.position.copy(scene.position);
+				light.castShadow = true;
+				light.shadowCameraLeft = -60;
+				light.shadowCameraTop = -60;
+				light.shadowCameraRight = 60;
+				light.shadowCameraBottom = 60;
+				light.shadowCameraNear = 20;
+				light.shadowCameraFar = 200;
+				light.shadowBias = -.0001;
+				light.shadowMapWidth = light.shadowMapHeight = 2048;
+				light.shadowDarkness = .7;
+				scene.add(light);
+			}
+
+			function createGround() {
+				//var simplexNoise = new SimplexNoise;
+				var geometry = new THREE.PlaneGeometry(20480 * 2, 20480, 512 * 2, 512);
+//plane.geometry.verticesNeedUpdate=true;
+				for (var x = 0; x < 1024; x++) {
+					for (var y = 0; y < 512; y++) {
+
+						var index = y * (1024 + 1) + x % (1024 + 1);
+						var vertex = geometry.vertices[index];
+						//vertex.z = gWorld.array[x][y] > 30 *16 ? gWorld.array[x][y] : 30 * 16;
+						vertex.z = gWorld.array[x][y];
+
+					}
+				}
+
+// 524282
+				/*
+				 for ( var i = 0; i < geometry.vertices.length; i++ ) {
+				 var vertex = geometry.vertices[i];
+				 
+				 var x = Math.floor(i % 1024);
+				 var y = Math.floor(i / 1024);
+				 
+				 
+				 //vertex.z = simplexNoise.noise( vertex.x / 10, vertex.y / 10 );
+				 vertex.z = gWorld.array[x][y] > 30 ? gWorld.array[x][y] : 30;
+				 
+				 
+				 }
+				 */
+				geometry.computeFaceNormals();
+				geometry.computeVertexNormals();
+
+				var map1 = THREE.ImageUtils.loadTexture('./img/grass512.jpg');
+				map1.wrapS = map1.wrapT = THREE.RepeatWrapping;
+				map1.repeat.set(8, 4);
+
+				ground = new THREE.Mesh(
+						geometry,
+						new THREE.MeshLambertMaterial({map: map1})
+						//new THREE.MeshLambertMaterial( { color: 0xff0000, wireframe: true } )
+						);
+
+				ground.rotation.x = Math.PI / -2;
+				ground.castShadow = true;
+				ground.receiveShadow = true;
+				scene.add(ground);
+
+				//// umi
+				var geometry2 = new THREE.PlaneGeometry(20480 * 16, 20480 * 16, 1, 1);
+				for (var i = 0; i < geometry2.vertices.length; i++) {
+					var vertex = geometry2.vertices[i];
+
+
+					vertex.z = 30 * 16;
+
+
+
+				}
+
+				geometry2.computeFaceNormals();
+				geometry2.computeVertexNormals();
+
+				var map2 = THREE.ImageUtils.loadTexture('./img/water_1.jpg');
+				map2.wrapS = map2.wrapT = THREE.RepeatWrapping;
+				map2.repeat.set(64, 32);
+
+				var ground2 = new THREE.Mesh(
+						geometry2,
+						new THREE.MeshLambertMaterial({map: map2})
+						//new THREE.MeshLambertMaterial( { color: 0xff0000, wireframe: true } )
+						);
+
+				ground2.rotation.x = Math.PI / -2;
+				ground2.castShadow = true;
+				ground2.receiveShadow = true;
+				scene.add(ground2);
+
+
+
+
+
+
+
+			}
+
+			function animate() {
+				var timer = Date.now();
+				requestAnimationFrame(animate);
+				camera.position.x = 20000 * Math.sin(timer / 100 * Math.PI / 360);
+				camera.position.z = 10000 * Math.cos(timer / 100 * Math.PI / 360);
+				camera.lookAt(scene.position);
+				renderer.render(scene, camera);
+			}
+
+
+
+
+
+
+
 
 
 // in order to work 'Math.seed' must NOT be undefined,
@@ -515,8 +895,10 @@ create();
 				return min + rnd * (max - min);
 			}
 
+
+
+
+
 		</script>
-
-
 	</body>
 </html>
